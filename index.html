@@ -1,400 +1,382 @@
 <!doctype html>
 <html lang="zh-CN">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
-  <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <meta name="mobile-web-app-capable" content="yes">
-  <meta name="theme-color" content="#08111f">
-  <title>BTC</title>
-  <style>
-    :root {
-      --bg-0: #08111f;
-      --bg-1: #0d1a2f;
-      --bg-2: #183354;
-      --ink: #edf3fb;
-      --muted: rgba(237, 243, 251, 0.46);
-      --glass: rgba(255, 255, 255, 0.06);
-      --live: #90f7c8;
-      --stale: #ffc36a;
-      --anim-ms: 520ms;
-      --anim-ease: cubic-bezier(0.16, 1, 0.3, 1);
-    }
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<meta name="mobile-web-app-capable" content="yes" />
+<meta name="theme-color" content="#000000" />
+<title>BTC</title>
+<style>
+  :root {
+    --bg: #000;
+    --ink: rgba(255,255,255,.92);
+    --dur: 520ms;
+    --ease: cubic-bezier(0.08,0.92,0.18,1);
+  }
 
-    * {
-      box-sizing: border-box;
-    }
+  * { box-sizing: border-box; }
 
-    html,
-    body {
-      margin: 0;
-      min-height: 100%;
-      overflow: hidden;
-      background:
-        radial-gradient(circle at 50% 18%, rgba(74, 128, 203, 0.30), transparent 34%),
-        radial-gradient(circle at 84% 78%, rgba(18, 104, 89, 0.18), transparent 28%),
-        linear-gradient(180deg, var(--bg-2), var(--bg-1) 44%, var(--bg-0));
-      color: var(--ink);
-      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", sans-serif;
-      -webkit-font-smoothing: antialiased;
-      text-rendering: geometricPrecision;
-    }
+  html, body {
+    height: 100%;
+    margin: 0;
+    background: var(--bg);
+    overflow: hidden;
+    overscroll-behavior: none;
+    touch-action: none;
+  }
 
-    body {
-      padding:
-        calc(env(safe-area-inset-top) + 10px)
-        calc(env(safe-area-inset-right) + 12px)
-        calc(env(safe-area-inset-bottom) + 10px)
-        calc(env(safe-area-inset-left) + 12px);
-    }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", system-ui, "PingFang SC", "Helvetica Neue", Arial, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: geometricPrecision;
+  }
 
-    .frame {
-      position: relative;
-      width: 100%;
-      height: min(100dvh, 100vh);
-      display: grid;
-      place-items: center;
-    }
+  .stage {
+    position: fixed;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    user-select: none;
+    padding-left: calc(env(safe-area-inset-left) + 5vw);
+    padding-right: calc(env(safe-area-inset-right) + 5vw);
+    padding-top: calc(env(safe-area-inset-top) + 4vh);
+    padding-bottom: calc(env(safe-area-inset-bottom) + 4vh);
+  }
 
-    .halo {
-      position: absolute;
-      inset: 8%;
-      border-radius: 999px;
-      background: radial-gradient(circle, rgba(99, 179, 255, 0.09), transparent 60%);
-      filter: blur(24px);
-      pointer-events: none;
-    }
+  .price {
+    color: var(--ink);
+    font-weight: 700;
+    line-height: 0.88;
+    letter-spacing: -0.045em;
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: "tnum" 1, "lnum" 1;
+    white-space: nowrap;
+    will-change: font-size;
+    overflow: visible;
+  }
 
-    .panel {
-      position: relative;
-      width: 100%;
-      display: grid;
-      justify-items: center;
-      text-align: center;
-    }
+  .odometer {
+    display: inline-flex;
+    align-items: baseline;
+    justify-content: center;
+    gap: 0;
+    white-space: nowrap;
+  }
 
-    .price-shell {
-      font-size: 160px;
-      line-height: 0.9;
-      font-weight: 760;
-      letter-spacing: -0.055em;
-      font-variant-numeric: tabular-nums lining-nums;
-      text-shadow: 0 24px 80px rgba(0, 0, 0, 0.38);
-      user-select: none;
-      white-space: nowrap;
+  .digit {
+    position: relative;
+    display: inline-block;
+    width: 0.70em;
+    height: 1em;
+    line-height: 1em;
+    overflow: hidden;
+    vertical-align: baseline;
+    padding: 0 0.02em;
+    box-sizing: content-box;
+  }
+
+  .sep {
+    width: 0.22em;
+    display: inline-block;
+    text-align: center;
+    margin: 0 -0.04em;
+    opacity: 0.86;
+  }
+
+  .track {
+    position: absolute;
+    left: 0;
+    top: 0;
+    will-change: transform;
+    transform: translate3d(0, var(--y, 0em), 0);
+    transition: transform var(--dur) var(--ease);
+  }
+
+  .cell {
+    height: 1em;
+    line-height: 1em;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding-right: 0.03em;
+    box-sizing: border-box;
+  }
+
+  @media (max-width: 430px) {
+    .stage {
+      padding-left: calc(env(safe-area-inset-left) + 7vw);
+      padding-right: calc(env(safe-area-inset-right) + 8vw);
     }
 
     .price {
-      display: inline-flex;
-      align-items: baseline;
-      justify-content: center;
-      white-space: nowrap;
+      letter-spacing: -0.040em;
     }
-
-    .digit {
-      position: relative;
-      display: inline-block;
-      width: 0.76em;
-      height: 1em;
-      overflow: hidden;
-      vertical-align: baseline;
-    }
-
-    .track {
-      position: absolute;
-      inset: 0;
-      transform: translate3d(0, 0, 0);
-      transition: transform var(--anim-ms) var(--anim-ease);
-      will-change: transform;
-    }
-
-    .cell {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      width: 100%;
-      height: 1em;
-      line-height: 1em;
-      padding: 0 0.02em;
-    }
-
-    .sep {
-      display: inline-block;
-      width: 0.24em;
-      text-align: center;
-      opacity: 0.92;
-    }
-
-    @media (max-width: 768px) {
-      body {
-        padding:
-          calc(env(safe-area-inset-top) + 8px)
-          calc(env(safe-area-inset-right) + 8px)
-          calc(env(safe-area-inset-bottom) + 8px)
-          calc(env(safe-area-inset-left) + 8px);
-      }
-    }
-  </style>
+  }
+</style>
 </head>
 <body>
-  <main class="frame" aria-live="polite">
-    <div class="halo"></div>
-    <section class="panel">
-      <div class="price-shell">
-        <div id="price" class="price"></div>
-      </div>
-    </section>
-  </main>
+  <div class="stage">
+    <div id="price" class="price odometer" aria-label="BTC price"></div>
+  </div>
 
-  <script>
-    const CACHE_KEY = "btc-price-cache-v2";
-    const REFRESH_MS = 5000;
-    const REQUEST_TIMEOUT_MS = 4500;
+<script>
+(() => {
+  const CACHE_KEY = "btc_price_cache_v1";
+  const CACHE_TS_KEY = "btc_price_cache_ts_v1";
+  const STALE_MS = 60 * 60 * 1000;
+  const MIN_UPDATE_INTERVAL_MS = 5000;
 
-    const priceEl = document.getElementById("price");
-    const priceShellEl = document.querySelector(".price-shell");
-    const sources = [
-      {
-        name: "OKX",
-        url: "https://www.okx.com/api/v5/market/ticker?instId=BTC-USDT",
-        parse: (json) => Number(json?.data?.[0]?.last)
-      },
-      {
-        name: "Binance",
-        url: "https://api.binance.com/api/v3/ticker/price?symbol=BTCUSDT",
-        parse: (json) => Number(json?.price)
+  const priceEl = document.getElementById("price");
+  const stageEl = document.querySelector(".stage");
+  const fmt = new Intl.NumberFormat("en-US", { maximumFractionDigits: 0 });
+
+  const sources = [
+    {
+      name: "OKX",
+      url: "https://www.okx.com/api/v5/market/ticker?instId=BTC-USDT",
+      parse: (json) => Number(json?.data?.[0]?.last)
+    },
+    {
+      name: "Binance",
+      url: "https://api.binance.com/api/v3/ticker/price?symbol=BTCUSDT",
+      parse: (json) => Number(json?.price)
+    },
+    {
+      name: "Coinbase",
+      url: "https://api.coinbase.com/v2/prices/BTC-USD/spot",
+      parse: (json) => Number(json?.data?.amount)
+    }
+  ];
+
+  let inited = false;
+  let currentTemplate = "";
+  let lastShown = "";
+  let fetchInFlight = false;
+
+  function freezeOdometer(freeze = true) {
+    priceEl.querySelectorAll(".track").forEach((track) => {
+      track.style.transitionDuration = freeze ? "0ms" : "";
+      track.style.transitionDelay = freeze ? "0ms" : "";
+    });
+  }
+
+  function buildOdometer(text) {
+    priceEl.innerHTML = "";
+    for (const ch of text) {
+      if (ch >= "0" && ch <= "9") {
+        const digit = document.createElement("span");
+        digit.className = "digit";
+        digit.dataset.value = ch;
+
+        const track = document.createElement("span");
+        track.className = "track";
+
+        for (let i = 0; i <= 9; i += 1) {
+          const cell = document.createElement("span");
+          cell.className = "cell";
+          cell.textContent = String(i);
+          track.appendChild(cell);
+        }
+
+        digit.appendChild(track);
+        priceEl.appendChild(digit);
+        track.style.setProperty("--y", `${-Number(ch)}em`);
+      } else {
+        const sep = document.createElement("span");
+        sep.className = "sep";
+        sep.textContent = ch;
+        priceEl.appendChild(sep);
       }
-    ];
+    }
+  }
 
-    let currentText = null;
-    let currentDigits = [];
-    let currentStructure = null;
+  function fitPrice() {
+    if (!priceEl.children.length) return;
 
-    function formatPrice(value) {
-      return new Intl.NumberFormat("en-US", {
-        maximumFractionDigits: 0
-      }).format(Math.round(value));
+    const stage = stageEl.getBoundingClientRect();
+    const maxW = stage.width;
+    const maxH = stage.height;
+
+    let lo = 10;
+    let hi = 900;
+    while (hi - lo > 0.5) {
+      const mid = (lo + hi) / 2;
+      priceEl.style.fontSize = `${mid}px`;
+      const rect = priceEl.getBoundingClientRect();
+      const ok = rect.width <= maxW * 0.996 && rect.height <= maxH * 0.82;
+      if (ok) lo = mid;
+      else hi = mid;
+    }
+    priceEl.style.fontSize = `${lo}px`;
+  }
+
+  function rebuildAndFit(text, animate = true) {
+    freezeOdometer(true);
+    buildOdometer(text);
+    fitPrice();
+    if (animate) requestAnimationFrame(() => freezeOdometer(false));
+    inited = true;
+  }
+
+  function setDigit(track, digit, instant) {
+    if (instant) {
+      track.style.transition = "none";
+      track.style.setProperty("--y", `${-Number(digit)}em`);
+      track.getBoundingClientRect();
+      track.style.transition = "";
+      return;
+    }
+    track.style.setProperty("--y", `${-Number(digit)}em`);
+  }
+
+  function setAllInstant(text) {
+    if (currentTemplate !== text) {
+      buildOdometer(text);
     }
 
-    function readCache() {
+    const nodes = Array.from(priceEl.children);
+    let i = 0;
+    for (const ch of text) {
+      const node = nodes[i++];
+      if (!node) break;
+      if (node.classList.contains("digit")) {
+        const track = node.querySelector(".track");
+        node.dataset.value = ch;
+        setDigit(track, ch, true);
+      } else {
+        node.textContent = ch;
+      }
+    }
+
+    currentTemplate = text;
+    lastShown = text;
+  }
+
+  function animateTo(text) {
+    if (!inited || text.length !== currentTemplate.length) {
+      rebuildAndFit(text, false);
+      setAllInstant(text);
+      return;
+    }
+
+    const nodes = Array.from(priceEl.children);
+    let i = 0;
+    for (const ch of text) {
+      const node = nodes[i++];
+      if (!node) break;
+      if (node.classList.contains("digit")) {
+        if (node.dataset.value !== ch) {
+          node.dataset.value = ch;
+          const track = node.querySelector(".track");
+          setDigit(track, ch, false);
+        }
+      } else {
+        node.textContent = ch;
+      }
+    }
+
+    currentTemplate = text;
+    lastShown = text;
+  }
+
+  function formatIntString(value) {
+    const n = Number(value);
+    if (!Number.isFinite(n) || n <= 0) return null;
+    return fmt.format(Math.round(n));
+  }
+
+  function readCache() {
+    try {
+      const price = localStorage.getItem(CACHE_KEY);
+      const ts = Number(localStorage.getItem(CACHE_TS_KEY));
+      if (!price) return null;
+      if (!Number.isFinite(ts)) return { price, stale: true };
+      return { price, stale: (Date.now() - ts) > STALE_MS };
+    } catch {
+      return null;
+    }
+  }
+
+  function writeCache(price) {
+    localStorage.setItem(CACHE_KEY, price);
+    localStorage.setItem(CACHE_TS_KEY, String(Date.now()));
+  }
+
+  async function fetchJson(url) {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 4500);
+    try {
+      const response = await fetch(url, { cache: "no-store", mode: "cors", signal: controller.signal });
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      return await response.json();
+    } finally {
+      clearTimeout(timer);
+    }
+  }
+
+  async function fetchPrice() {
+    for (const source of sources) {
       try {
-        const raw = localStorage.getItem(CACHE_KEY);
-        if (!raw) return null;
-        const parsed = JSON.parse(raw);
-        if (!Number.isFinite(parsed?.price) || !Number.isFinite(parsed?.ts)) return null;
-        return parsed;
+        const json = await fetchJson(source.url);
+        const price = source.parse(json);
+        const formatted = formatIntString(price);
+        if (formatted) return formatted;
       } catch {
-        return null;
+        // try next source
       }
     }
+    throw new Error("all sources failed");
+  }
 
-    function writeCache(entry) {
-      localStorage.setItem(CACHE_KEY, JSON.stringify(entry));
-    }
-
-    function buildPrice(text) {
-      const fragment = document.createDocumentFragment();
-      currentDigits = [];
-
-      for (const ch of text) {
-        if (/\d/.test(ch)) {
-          const digitEl = document.createElement("span");
-          digitEl.className = "digit";
-          digitEl.dataset.digit = ch;
-
-          const trackEl = document.createElement("span");
-          trackEl.className = "track";
-
-          for (let i = 0; i <= 9; i += 1) {
-            const cellEl = document.createElement("span");
-            cellEl.className = "cell";
-            cellEl.textContent = String(i);
-            trackEl.appendChild(cellEl);
-          }
-
-          digitEl.appendChild(trackEl);
-          fragment.appendChild(digitEl);
-          currentDigits.push({ digitEl, trackEl });
-        } else {
-          const sepEl = document.createElement("span");
-          sepEl.className = "sep";
-          sepEl.textContent = ch;
-          fragment.appendChild(sepEl);
-        }
+  async function refreshPrice() {
+    if (fetchInFlight) return;
+    fetchInFlight = true;
+    try {
+      const next = await fetchPrice();
+      writeCache(next);
+      if (!lastShown) {
+        rebuildAndFit(next, false);
+        setAllInstant(next);
+      } else if (next.length !== currentTemplate.length) {
+        rebuildAndFit(next, false);
+        setAllInstant(next);
+      } else if (next !== lastShown) {
+        animateTo(next);
       }
-
-      priceEl.replaceChildren(fragment);
-      currentText = text;
-      currentStructure = text.replace(/\d/g, "#");
+    } catch {
+      // keep current display or cache
+    } finally {
+      fetchInFlight = false;
     }
+  }
 
-    function getViewport() {
-      const vv = window.visualViewport;
-      return {
-        width: Math.floor(vv?.width ?? window.innerWidth),
-        height: Math.floor(vv?.height ?? window.innerHeight)
-      };
-    }
-
-    function fitPriceBox() {
-      if (!currentText || !priceShellEl) return;
-
-      const { width, height } = getViewport();
-      const maxWidth = Math.max(220, width - 8);
-      const maxHeight = Math.max(120, height - 8);
-
-      let lo = 80;
-      let hi = 1200;
-      let best = lo;
-
-      for (let i = 0; i < 16; i += 1) {
-        const mid = (lo + hi) >> 1;
-        priceShellEl.style.fontSize = `${mid}px`;
-        const box = priceShellEl.getBoundingClientRect();
-        const ok = box.width <= maxWidth && box.height <= maxHeight;
-
-        if (ok) {
-          best = mid;
-          lo = mid + 1;
-        } else {
-          hi = mid - 1;
-        }
-      }
-
-      priceShellEl.style.fontSize = `${best}px`;
-    }
-
-    function setDigit(trackEl, digit, instant) {
-      if (instant) {
-        trackEl.style.transition = "none";
-        trackEl.style.transform = `translate3d(0, ${-Number(digit)}em, 0)`;
-        void trackEl.offsetHeight;
-        trackEl.style.transition = "";
-        return;
-      }
-
-      trackEl.style.transform = `translate3d(0, ${-Number(digit)}em, 0)`;
-    }
-
-    function setPriceInstant(text) {
-      if (currentText !== text) {
-        buildPrice(text);
-      }
-
-      let digitIndex = 0;
-      for (const ch of text) {
-        if (!/\d/.test(ch)) continue;
-        const { digitEl, trackEl } = currentDigits[digitIndex];
-        digitEl.dataset.digit = ch;
-        setDigit(trackEl, ch, true);
-        digitIndex += 1;
-      }
-
-      currentText = text;
-    }
-
-    function animatePrice(text) {
-      if (!currentText || currentText.length !== text.length || currentStructure !== text.replace(/\d/g, "#")) {
-        setPriceInstant(text);
-        return;
-      }
-
-      let digitIndex = 0;
-      for (const ch of text) {
-        if (!/\d/.test(ch)) continue;
-        const { digitEl, trackEl } = currentDigits[digitIndex];
-        const prev = digitEl.dataset.digit;
-        if (prev !== ch) {
-          digitEl.dataset.digit = ch;
-          setDigit(trackEl, ch, false);
-        }
-        digitIndex += 1;
-      }
-
-      currentText = text;
-    }
-
-    function renderState(entry) {
-      const formatted = formatPrice(entry.price);
-
-      if (!currentText || currentText.length !== formatted.length || currentStructure !== formatted.replace(/\d/g, "#")) {
-        setPriceInstant(formatted);
-        fitPriceBox();
-      } else if (currentText !== formatted) {
-        animatePrice(formatted);
-      }
-    }
-
-    async function fetchJson(url) {
-      const controller = new AbortController();
-      const timer = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
-
-      try {
-        const response = await fetch(url, {
-          method: "GET",
-          cache: "no-store",
-          mode: "cors",
-          signal: controller.signal
-        });
-
-        if (!response.ok) {
-          throw new Error(`HTTP ${response.status}`);
-        }
-
-        return await response.json();
-      } finally {
-        clearTimeout(timer);
-      }
-    }
-
-    async function fetchPrice() {
-      for (const source of sources) {
-        try {
-          const json = await fetchJson(source.url);
-          const price = source.parse(json);
-          if (!Number.isFinite(price) || price <= 0) {
-            continue;
-          }
-          return {
-            price,
-            source: source.name,
-            ts: Date.now()
-          };
-        } catch {
-          // Try the next source.
-        }
-      }
-
-      throw new Error("All sources failed");
-    }
-
-    async function refreshPrice() {
-      try {
-        const next = await fetchPrice();
-        writeCache(next);
-        renderState(next);
-      } catch {
-        const cached = readCache();
-        if (cached) {
-          renderState(cached);
-        }
-      }
-    }
-
+  function boot() {
     const cached = readCache();
-    if (cached) {
-      renderState(cached);
+    if (cached?.price) {
+      rebuildAndFit(cached.price, false);
+      setAllInstant(cached.price);
     }
-
     refreshPrice();
-    setInterval(refreshPrice, REFRESH_MS);
-    window.addEventListener("resize", fitPriceBox, { passive: true });
-    window.addEventListener("orientationchange", () => setTimeout(fitPriceBox, 80), { passive: true });
-    if (window.visualViewport) {
-      visualViewport.addEventListener("resize", fitPriceBox, { passive: true });
-      visualViewport.addEventListener("scroll", fitPriceBox, { passive: true });
-    }
-  </script>
+    setInterval(refreshPrice, MIN_UPDATE_INTERVAL_MS);
+  }
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", boot, { once: true });
+  } else {
+    boot();
+  }
+
+  window.addEventListener("orientationchange", () => {
+    if (inited) setTimeout(fitPrice, 80);
+  }, { passive: true });
+
+  window.addEventListener("pageshow", () => {
+    if (inited) setTimeout(fitPrice, 80);
+  }, { passive: true });
+})();
+</script>
 </body>
 </html>
