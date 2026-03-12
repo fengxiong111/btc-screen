@@ -43,10 +43,10 @@
 
     body {
       padding:
-        calc(env(safe-area-inset-top) + 18px)
-        calc(env(safe-area-inset-right) + 24px)
-        calc(env(safe-area-inset-bottom) + 18px)
-        calc(env(safe-area-inset-left) + 24px);
+        calc(env(safe-area-inset-top) + 10px)
+        calc(env(safe-area-inset-right) + 12px)
+        calc(env(safe-area-inset-bottom) + 10px)
+        calc(env(safe-area-inset-left) + 12px);
     }
 
     .frame {
@@ -71,7 +71,6 @@
       width: 100%;
       display: grid;
       justify-items: center;
-      gap: 18px;
       text-align: center;
     }
 
@@ -127,75 +126,13 @@
       opacity: 0.92;
     }
 
-    .meta {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 12px;
-      flex-wrap: wrap;
-      font-size: clamp(14px, 1.15vw, 22px);
-      color: var(--muted);
-      letter-spacing: 0.03em;
-      text-transform: uppercase;
-    }
-
-    .pill {
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-      padding: 8px 12px;
-      border-radius: 999px;
-      background: var(--glass);
-      backdrop-filter: blur(10px);
-    }
-
-    .dot {
-      width: 8px;
-      height: 8px;
-      border-radius: 50%;
-      background: var(--live);
-      box-shadow: 0 0 0 6px rgba(144, 247, 200, 0.12);
-    }
-
-    .dot.stale {
-      background: var(--stale);
-      box-shadow: 0 0 0 6px rgba(255, 195, 106, 0.12);
-    }
-
-    .corner {
-      position: absolute;
-      right: 0;
-      bottom: 0;
-      display: flex;
-      gap: 12px;
-      align-items: center;
-      font-size: clamp(11px, 0.92vw, 16px);
-      color: rgba(237, 243, 251, 0.34);
-      letter-spacing: 0.04em;
-      text-transform: uppercase;
-    }
-
-    @media (orientation: portrait) {
-      .price-shell {
-        font-size: 140px;
-      }
-    }
-
     @media (max-width: 768px) {
       body {
         padding:
-          calc(env(safe-area-inset-top) + 16px)
-          calc(env(safe-area-inset-right) + 16px)
-          calc(env(safe-area-inset-bottom) + 16px)
-          calc(env(safe-area-inset-left) + 16px);
-      }
-
-      .panel {
-        gap: 14px;
-      }
-
-      .meta {
-        gap: 8px;
+          calc(env(safe-area-inset-top) + 8px)
+          calc(env(safe-area-inset-right) + 8px)
+          calc(env(safe-area-inset-bottom) + 8px)
+          calc(env(safe-area-inset-left) + 8px);
       }
     }
   </style>
@@ -205,22 +142,9 @@
     <div class="halo"></div>
     <section class="panel">
       <div class="price-shell">
-        <div id="price" class="price">--</div>
-      </div>
-      <div class="meta">
-        <span class="pill">
-          <span id="status-dot" class="dot stale"></span>
-          <span id="status-text">Connecting</span>
-        </span>
-        <span class="pill">
-          <span id="source-text">Source: --</span>
-        </span>
+        <div id="price" class="price"></div>
       </div>
     </section>
-    <div class="corner">
-      <span id="updated-text">Updated --</span>
-      <span>GitHub Pages</span>
-    </div>
   </main>
 
   <script>
@@ -230,11 +154,6 @@
 
     const priceEl = document.getElementById("price");
     const priceShellEl = document.querySelector(".price-shell");
-    const statusDotEl = document.getElementById("status-dot");
-    const statusTextEl = document.getElementById("status-text");
-    const sourceTextEl = document.getElementById("source-text");
-    const updatedTextEl = document.getElementById("updated-text");
-
     const sources = [
       {
         name: "OKX",
@@ -250,21 +169,12 @@
 
     let currentText = null;
     let currentDigits = [];
+    let currentStructure = null;
 
     function formatPrice(value) {
       return new Intl.NumberFormat("en-US", {
         maximumFractionDigits: 0
       }).format(Math.round(value));
-    }
-
-    function formatTime(ts) {
-      if (!ts) return "--";
-      return new Intl.DateTimeFormat("zh-CN", {
-        hour: "2-digit",
-        minute: "2-digit",
-        second: "2-digit",
-        hour12: false
-      }).format(new Date(ts));
     }
 
     function readCache() {
@@ -316,6 +226,7 @@
 
       priceEl.replaceChildren(fragment);
       currentText = text;
+      currentStructure = text.replace(/\d/g, "#");
     }
 
     function getViewport() {
@@ -330,8 +241,8 @@
       if (!currentText || !priceShellEl) return;
 
       const { width, height } = getViewport();
-      const maxWidth = Math.max(220, width - 32);
-      const maxHeight = Math.max(120, Math.floor(height * 0.38));
+      const maxWidth = Math.max(220, width - 8);
+      const maxHeight = Math.max(120, height - 8);
 
       let lo = 80;
       let hi = 1200;
@@ -381,11 +292,10 @@
       }
 
       currentText = text;
-      fitPriceBox();
     }
 
     function animatePrice(text) {
-      if (!currentText || currentText.length !== text.length) {
+      if (!currentText || currentText.length !== text.length || currentStructure !== text.replace(/\d/g, "#")) {
         setPriceInstant(text);
         return;
       }
@@ -403,22 +313,17 @@
       }
 
       currentText = text;
-      fitPriceBox();
     }
 
-    function renderState(entry, stale) {
+    function renderState(entry) {
       const formatted = formatPrice(entry.price);
 
-      if (!currentText || currentText.length !== formatted.length) {
+      if (!currentText || currentText.length !== formatted.length || currentStructure !== formatted.replace(/\d/g, "#")) {
         setPriceInstant(formatted);
+        fitPriceBox();
       } else if (currentText !== formatted) {
         animatePrice(formatted);
       }
-
-      statusDotEl.classList.toggle("stale", stale);
-      statusTextEl.textContent = stale ? "Stale" : "Live";
-      sourceTextEl.textContent = `Source: ${entry.source}`;
-      updatedTextEl.textContent = `Updated ${formatTime(entry.ts)}`;
     }
 
     async function fetchJson(url) {
@@ -468,24 +373,18 @@
       try {
         const next = await fetchPrice();
         writeCache(next);
-        renderState(next, false);
+        renderState(next);
       } catch {
         const cached = readCache();
         if (cached) {
-          renderState(cached, true);
-        } else {
-          priceEl.textContent = "--";
-          statusDotEl.classList.add("stale");
-          statusTextEl.textContent = "Offline";
-          sourceTextEl.textContent = "Source: --";
-          updatedTextEl.textContent = "Updated --";
+          renderState(cached);
         }
       }
     }
 
     const cached = readCache();
     if (cached) {
-      renderState(cached, true);
+      renderState(cached);
     }
 
     refreshPrice();
