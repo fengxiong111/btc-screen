@@ -18,7 +18,7 @@
       --glass: rgba(255, 255, 255, 0.06);
       --live: #90f7c8;
       --stale: #ffc36a;
-      --anim-ms: 260ms;
+      --anim-ms: 520ms;
       --anim-ease: cubic-bezier(0.16, 1, 0.3, 1);
     }
 
@@ -90,18 +90,16 @@
       display: inline-flex;
       align-items: baseline;
       justify-content: center;
-      gap: 0;
       white-space: nowrap;
     }
 
     .digit {
       position: relative;
       display: inline-block;
-      width: 0.70em;
+      width: 0.76em;
       height: 1em;
       overflow: hidden;
       vertical-align: baseline;
-      padding: 0 0.04em 0 0;
     }
 
     .track {
@@ -119,7 +117,7 @@
       width: 100%;
       height: 1em;
       line-height: 1em;
-      padding: 0 0.03em;
+      padding: 0 0.02em;
     }
 
     .sep {
@@ -127,7 +125,6 @@
       width: 0.24em;
       text-align: center;
       opacity: 0.92;
-      margin: 0 -0.02em;
     }
 
     .meta {
@@ -253,7 +250,6 @@
 
     let currentText = null;
     let currentDigits = [];
-    let currentStructure = null;
 
     function formatPrice(value) {
       return new Intl.NumberFormat("en-US", {
@@ -320,8 +316,6 @@
 
       priceEl.replaceChildren(fragment);
       currentText = text;
-      currentStructure = text.replace(/\d/g, "#");
-      fitPriceBox();
     }
 
     function getViewport() {
@@ -387,10 +381,11 @@
       }
 
       currentText = text;
+      fitPriceBox();
     }
 
     function animatePrice(text) {
-      if (!currentText || currentText.length !== text.length || currentStructure !== text.replace(/\d/g, "#")) {
+      if (!currentText || currentText.length !== text.length) {
         setPriceInstant(text);
         return;
       }
@@ -408,12 +403,13 @@
       }
 
       currentText = text;
+      fitPriceBox();
     }
 
     function renderState(entry, stale) {
       const formatted = formatPrice(entry.price);
 
-      if (!currentText || currentText.length !== formatted.length || currentStructure !== formatted.replace(/\d/g, "#")) {
+      if (!currentText || currentText.length !== formatted.length) {
         setPriceInstant(formatted);
       } else if (currentText !== formatted) {
         animatePrice(formatted);
