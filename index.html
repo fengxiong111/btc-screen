@@ -1,0 +1,501 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="theme-color" content="#08111f">
+  <title>BTC</title>
+  <style>
+    :root {
+      --bg-0: #08111f;
+      --bg-1: #0d1a2f;
+      --bg-2: #183354;
+      --ink: #edf3fb;
+      --muted: rgba(237, 243, 251, 0.46);
+      --glass: rgba(255, 255, 255, 0.06);
+      --live: #90f7c8;
+      --stale: #ffc36a;
+      --anim-ms: 520ms;
+      --anim-ease: cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html,
+    body {
+      margin: 0;
+      min-height: 100%;
+      overflow: hidden;
+      background:
+        radial-gradient(circle at 50% 18%, rgba(74, 128, 203, 0.30), transparent 34%),
+        radial-gradient(circle at 84% 78%, rgba(18, 104, 89, 0.18), transparent 28%),
+        linear-gradient(180deg, var(--bg-2), var(--bg-1) 44%, var(--bg-0));
+      color: var(--ink);
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", sans-serif;
+      -webkit-font-smoothing: antialiased;
+      text-rendering: geometricPrecision;
+    }
+
+    body {
+      padding:
+        calc(env(safe-area-inset-top) + 18px)
+        calc(env(safe-area-inset-right) + 24px)
+        calc(env(safe-area-inset-bottom) + 18px)
+        calc(env(safe-area-inset-left) + 24px);
+    }
+
+    .frame {
+      position: relative;
+      width: 100%;
+      height: min(100dvh, 100vh);
+      display: grid;
+      place-items: center;
+    }
+
+    .halo {
+      position: absolute;
+      inset: 8%;
+      border-radius: 999px;
+      background: radial-gradient(circle, rgba(99, 179, 255, 0.09), transparent 60%);
+      filter: blur(24px);
+      pointer-events: none;
+    }
+
+    .panel {
+      position: relative;
+      width: 100%;
+      display: grid;
+      justify-items: center;
+      gap: 18px;
+      text-align: center;
+    }
+
+    .price-shell {
+      font-size: 160px;
+      line-height: 0.9;
+      font-weight: 760;
+      letter-spacing: -0.055em;
+      font-variant-numeric: tabular-nums lining-nums;
+      text-shadow: 0 24px 80px rgba(0, 0, 0, 0.38);
+      user-select: none;
+      white-space: nowrap;
+    }
+
+    .price {
+      display: inline-flex;
+      align-items: baseline;
+      justify-content: center;
+      white-space: nowrap;
+    }
+
+    .digit {
+      position: relative;
+      display: inline-block;
+      width: 0.76em;
+      height: 1em;
+      overflow: hidden;
+      vertical-align: baseline;
+    }
+
+    .track {
+      position: absolute;
+      inset: 0;
+      transform: translate3d(0, 0, 0);
+      transition: transform var(--anim-ms) var(--anim-ease);
+      will-change: transform;
+    }
+
+    .cell {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 100%;
+      height: 1em;
+      line-height: 1em;
+      padding: 0 0.02em;
+    }
+
+    .sep {
+      display: inline-block;
+      width: 0.24em;
+      text-align: center;
+      opacity: 0.92;
+    }
+
+    .meta {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+      flex-wrap: wrap;
+      font-size: clamp(14px, 1.15vw, 22px);
+      color: var(--muted);
+      letter-spacing: 0.03em;
+      text-transform: uppercase;
+    }
+
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 12px;
+      border-radius: 999px;
+      background: var(--glass);
+      backdrop-filter: blur(10px);
+    }
+
+    .dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--live);
+      box-shadow: 0 0 0 6px rgba(144, 247, 200, 0.12);
+    }
+
+    .dot.stale {
+      background: var(--stale);
+      box-shadow: 0 0 0 6px rgba(255, 195, 106, 0.12);
+    }
+
+    .corner {
+      position: absolute;
+      right: 0;
+      bottom: 0;
+      display: flex;
+      gap: 12px;
+      align-items: center;
+      font-size: clamp(11px, 0.92vw, 16px);
+      color: rgba(237, 243, 251, 0.34);
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+
+    @media (orientation: portrait) {
+      .price-shell {
+        font-size: 140px;
+      }
+    }
+
+    @media (max-width: 768px) {
+      body {
+        padding:
+          calc(env(safe-area-inset-top) + 16px)
+          calc(env(safe-area-inset-right) + 16px)
+          calc(env(safe-area-inset-bottom) + 16px)
+          calc(env(safe-area-inset-left) + 16px);
+      }
+
+      .panel {
+        gap: 14px;
+      }
+
+      .meta {
+        gap: 8px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="frame" aria-live="polite">
+    <div class="halo"></div>
+    <section class="panel">
+      <div class="price-shell">
+        <div id="price" class="price">--</div>
+      </div>
+      <div class="meta">
+        <span class="pill">
+          <span id="status-dot" class="dot stale"></span>
+          <span id="status-text">Connecting</span>
+        </span>
+        <span class="pill">
+          <span id="source-text">Source: --</span>
+        </span>
+      </div>
+    </section>
+    <div class="corner">
+      <span id="updated-text">Updated --</span>
+      <span>GitHub Pages</span>
+    </div>
+  </main>
+
+  <script>
+    const CACHE_KEY = "btc-price-cache-v2";
+    const REFRESH_MS = 5000;
+    const REQUEST_TIMEOUT_MS = 4500;
+
+    const priceEl = document.getElementById("price");
+    const priceShellEl = document.querySelector(".price-shell");
+    const statusDotEl = document.getElementById("status-dot");
+    const statusTextEl = document.getElementById("status-text");
+    const sourceTextEl = document.getElementById("source-text");
+    const updatedTextEl = document.getElementById("updated-text");
+
+    const sources = [
+      {
+        name: "OKX",
+        url: "https://www.okx.com/api/v5/market/ticker?instId=BTC-USDT",
+        parse: (json) => Number(json?.data?.[0]?.last)
+      },
+      {
+        name: "Binance",
+        url: "https://api.binance.com/api/v3/ticker/price?symbol=BTCUSDT",
+        parse: (json) => Number(json?.price)
+      }
+    ];
+
+    let currentText = null;
+    let currentDigits = [];
+
+    function formatPrice(value) {
+      return new Intl.NumberFormat("en-US", {
+        maximumFractionDigits: 0
+      }).format(Math.round(value));
+    }
+
+    function formatTime(ts) {
+      if (!ts) return "--";
+      return new Intl.DateTimeFormat("zh-CN", {
+        hour: "2-digit",
+        minute: "2-digit",
+        second: "2-digit",
+        hour12: false
+      }).format(new Date(ts));
+    }
+
+    function readCache() {
+      try {
+        const raw = localStorage.getItem(CACHE_KEY);
+        if (!raw) return null;
+        const parsed = JSON.parse(raw);
+        if (!Number.isFinite(parsed?.price) || !Number.isFinite(parsed?.ts)) return null;
+        return parsed;
+      } catch {
+        return null;
+      }
+    }
+
+    function writeCache(entry) {
+      localStorage.setItem(CACHE_KEY, JSON.stringify(entry));
+    }
+
+    function buildPrice(text) {
+      const fragment = document.createDocumentFragment();
+      currentDigits = [];
+
+      for (const ch of text) {
+        if (/\d/.test(ch)) {
+          const digitEl = document.createElement("span");
+          digitEl.className = "digit";
+          digitEl.dataset.digit = ch;
+
+          const trackEl = document.createElement("span");
+          trackEl.className = "track";
+
+          for (let i = 0; i <= 9; i += 1) {
+            const cellEl = document.createElement("span");
+            cellEl.className = "cell";
+            cellEl.textContent = String(i);
+            trackEl.appendChild(cellEl);
+          }
+
+          digitEl.appendChild(trackEl);
+          fragment.appendChild(digitEl);
+          currentDigits.push({ digitEl, trackEl });
+        } else {
+          const sepEl = document.createElement("span");
+          sepEl.className = "sep";
+          sepEl.textContent = ch;
+          fragment.appendChild(sepEl);
+        }
+      }
+
+      priceEl.replaceChildren(fragment);
+      currentText = text;
+    }
+
+    function getViewport() {
+      const vv = window.visualViewport;
+      return {
+        width: Math.floor(vv?.width ?? window.innerWidth),
+        height: Math.floor(vv?.height ?? window.innerHeight)
+      };
+    }
+
+    function fitPriceBox() {
+      if (!currentText || !priceShellEl) return;
+
+      const { width, height } = getViewport();
+      const maxWidth = Math.max(220, width - 32);
+      const maxHeight = Math.max(120, Math.floor(height * 0.38));
+
+      let lo = 80;
+      let hi = 1200;
+      let best = lo;
+
+      for (let i = 0; i < 16; i += 1) {
+        const mid = (lo + hi) >> 1;
+        priceShellEl.style.fontSize = `${mid}px`;
+        const box = priceShellEl.getBoundingClientRect();
+        const ok = box.width <= maxWidth && box.height <= maxHeight;
+
+        if (ok) {
+          best = mid;
+          lo = mid + 1;
+        } else {
+          hi = mid - 1;
+        }
+      }
+
+      priceShellEl.style.fontSize = `${best}px`;
+    }
+
+    function setDigit(trackEl, digit, instant) {
+      if (instant) {
+        trackEl.style.transition = "none";
+        trackEl.style.transform = `translate3d(0, ${-Number(digit)}em, 0)`;
+        void trackEl.offsetHeight;
+        trackEl.style.transition = "";
+        return;
+      }
+
+      trackEl.style.transform = `translate3d(0, ${-Number(digit)}em, 0)`;
+    }
+
+    function setPriceInstant(text) {
+      if (currentText !== text) {
+        buildPrice(text);
+      }
+
+      let digitIndex = 0;
+      for (const ch of text) {
+        if (!/\d/.test(ch)) continue;
+        const { digitEl, trackEl } = currentDigits[digitIndex];
+        digitEl.dataset.digit = ch;
+        setDigit(trackEl, ch, true);
+        digitIndex += 1;
+      }
+
+      currentText = text;
+      fitPriceBox();
+    }
+
+    function animatePrice(text) {
+      if (!currentText || currentText.length !== text.length) {
+        setPriceInstant(text);
+        return;
+      }
+
+      let digitIndex = 0;
+      for (const ch of text) {
+        if (!/\d/.test(ch)) continue;
+        const { digitEl, trackEl } = currentDigits[digitIndex];
+        const prev = digitEl.dataset.digit;
+        if (prev !== ch) {
+          digitEl.dataset.digit = ch;
+          setDigit(trackEl, ch, false);
+        }
+        digitIndex += 1;
+      }
+
+      currentText = text;
+      fitPriceBox();
+    }
+
+    function renderState(entry, stale) {
+      const formatted = formatPrice(entry.price);
+
+      if (!currentText || currentText.length !== formatted.length) {
+        setPriceInstant(formatted);
+      } else if (currentText !== formatted) {
+        animatePrice(formatted);
+      }
+
+      statusDotEl.classList.toggle("stale", stale);
+      statusTextEl.textContent = stale ? "Stale" : "Live";
+      sourceTextEl.textContent = `Source: ${entry.source}`;
+      updatedTextEl.textContent = `Updated ${formatTime(entry.ts)}`;
+    }
+
+    async function fetchJson(url) {
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+
+      try {
+        const response = await fetch(url, {
+          method: "GET",
+          cache: "no-store",
+          mode: "cors",
+          signal: controller.signal
+        });
+
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}`);
+        }
+
+        return await response.json();
+      } finally {
+        clearTimeout(timer);
+      }
+    }
+
+    async function fetchPrice() {
+      for (const source of sources) {
+        try {
+          const json = await fetchJson(source.url);
+          const price = source.parse(json);
+          if (!Number.isFinite(price) || price <= 0) {
+            continue;
+          }
+          return {
+            price,
+            source: source.name,
+            ts: Date.now()
+          };
+        } catch {
+          // Try the next source.
+        }
+      }
+
+      throw new Error("All sources failed");
+    }
+
+    async function refreshPrice() {
+      try {
+        const next = await fetchPrice();
+        writeCache(next);
+        renderState(next, false);
+      } catch {
+        const cached = readCache();
+        if (cached) {
+          renderState(cached, true);
+        } else {
+          priceEl.textContent = "--";
+          statusDotEl.classList.add("stale");
+          statusTextEl.textContent = "Offline";
+          sourceTextEl.textContent = "Source: --";
+          updatedTextEl.textContent = "Updated --";
+        }
+      }
+    }
+
+    const cached = readCache();
+    if (cached) {
+      renderState(cached, true);
+    }
+
+    refreshPrice();
+    setInterval(refreshPrice, REFRESH_MS);
+    window.addEventListener("resize", fitPriceBox, { passive: true });
+    window.addEventListener("orientationchange", () => setTimeout(fitPriceBox, 80), { passive: true });
+    if (window.visualViewport) {
+      visualViewport.addEventListener("resize", fitPriceBox, { passive: true });
+      visualViewport.addEventListener("scroll", fitPriceBox, { passive: true });
+    }
+  </script>
+</body>
+</html>
