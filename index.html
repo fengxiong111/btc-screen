@@ -56,51 +56,13 @@
     overflow: visible;
   }
 
-  .odometer {
-    display: inline-flex;
-    align-items: baseline;
-    justify-content: center;
-    gap: 0;
-    white-space: nowrap;
+  .price.is-refreshing {
+    animation: price-pulse 750ms cubic-bezier(0.4, 0, 0.6, 1) 1;
   }
 
-  .digit {
-    position: relative;
-    display: inline-block;
-    width: 0.70em;
-    height: 1em;
-    line-height: 1em;
-    overflow: hidden;
-    vertical-align: baseline;
-    padding: 0 0.02em;
-    box-sizing: content-box;
-  }
-
-  .sep {
-    width: 0.22em;
-    display: inline-block;
-    text-align: center;
-    margin: 0 -0.04em;
-    opacity: 0.86;
-  }
-
-  .track {
-    position: absolute;
-    left: 0;
-    top: 0;
-    width: 100%;
-    will-change: transform;
-    transform: translate3d(0, 0, 0);
-  }
-
-  .cell {
-    height: 1em;
-    line-height: 1em;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding-right: 0.03em;
-    box-sizing: border-box;
+  @keyframes price-pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
   }
 
   @media (max-width: 430px) {
@@ -117,7 +79,7 @@
 </head>
 <body>
   <div class="stage">
-    <div id="price" class="price odometer" aria-label="BTC price"></div>
+    <div id="price" class="price" aria-label="BTC price"></div>
   </div>
 
 <script>
@@ -126,9 +88,6 @@
   const CACHE_TS_KEY = "btc_price_cache_ts_v1";
   const STALE_MS = 60 * 60 * 1000;
   const MIN_UPDATE_INTERVAL_MS = 1000;
-  const ANIM_MS = 180;
-  const ANIM_EASE = "cubic-bezier(0.2, 0.9, 0.2, 1)";
-
   const priceEl = document.getElementById("price");
   const stageEl = document.querySelector(".stage");
   const fmt = new Intl.NumberFormat("en-US", { maximumFractionDigits: 0 });
@@ -152,47 +111,12 @@
   ];
 
   let inited = false;
-  let currentTemplate = "";
   let lastShown = "";
   let fetchInFlight = false;
-  let digitCellHeight = 0;
-
-  function freezeOdometer() {}
-
-  function buildOdometer(text) {
-    priceEl.innerHTML = "";
-    for (const ch of text) {
-      if (ch >= "0" && ch <= "9") {
-        const digit = document.createElement("span");
-        digit.className = "digit";
-        digit.dataset.value = ch;
-
-        const track = document.createElement("span");
-        track.className = "track";
-
-        for (let pass = 0; pass < 3; pass += 1) {
-          for (let i = 0; i <= 9; i += 1) {
-            const cell = document.createElement("span");
-            cell.className = "cell";
-            cell.textContent = String(i);
-            track.appendChild(cell);
-          }
-        }
-
-        digit.appendChild(track);
-        priceEl.appendChild(digit);
-        track.style.transform = "translate3d(0, 0, 0)";
-      } else {
-        const sep = document.createElement("span");
-        sep.className = "sep";
-        sep.textContent = ch;
-        priceEl.appendChild(sep);
-      }
-    }
-  }
+  let pulseTimer = null;
 
   function fitPrice() {
-    if (!priceEl.children.length) return;
+    if (!priceEl.textContent) return;
 
     const stage = stageEl.getBoundingClientRect();
     const maxW = stage.width;
@@ -211,113 +135,23 @@
     priceEl.style.fontSize = `${lo}px`;
   }
 
-  function refreshCellHeight() {
-    const cell = priceEl.querySelector(".cell");
-    if (cell) {
-      digitCellHeight = cell.getBoundingClientRect().height || digitCellHeight;
+  function renderPrice(text, pulse) {
+    if (priceEl.textContent !== text) {
+      priceEl.textContent = text;
     }
-    return digitCellHeight;
-  }
-
-  function reelIndexForDigit(digit) {
-    return 10 + Number(digit);
-  }
-
-  function reelOffsetPx(index) {
-    return -index * refreshCellHeight();
-  }
-
-  function rebuildAndFit(text, animate = true) {
-    freezeOdometer(true);
-    buildOdometer(text);
-    fitPrice();
-    refreshCellHeight();
-    if (animate) requestAnimationFrame(() => freezeOdometer(false));
-    inited = true;
-  }
-
-  function animateDigit(track, fromDigit, toDigit, direction) {
-    const fromIndex = reelIndexForDigit(fromDigit);
-    const centerToIndex = reelIndexForDigit(toDigit);
-    const steps = direction > 0
-      ? (Number(toDigit) - Number(fromDigit) + 10) % 10
-      : (Number(fromDigit) - Number(toDigit) + 10) % 10;
-    const toIndex = direction > 0 ? fromIndex + steps : fromIndex - steps;
-
-    track.getAnimations().forEach((anim) => anim.cancel());
-    track.style.transform = `translate3d(0, ${reelOffsetPx(fromIndex)}px, 0)`;
-    const anim = track.animate(
-      [
-        { transform: `translate3d(0, ${reelOffsetPx(fromIndex)}px, 0)` },
-        { transform: `translate3d(0, ${reelOffsetPx(toIndex)}px, 0)` }
-      ],
-      { duration: ANIM_MS, easing: ANIM_EASE, fill: "forwards" }
-    );
-    anim.onfinish = () => {
-      track.style.transform = `translate3d(0, ${reelOffsetPx(centerToIndex)}px, 0)`;
-    };
-  }
-
-  function setDigit(track, fromDigit, toDigit, instant, direction = 1) {
-    if (instant) {
-      track.getAnimations().forEach((anim) => anim.cancel());
-      track.style.transform = `translate3d(0, ${reelOffsetPx(reelIndexForDigit(toDigit))}px, 0)`;
-      return;
-    }
-    animateDigit(track, fromDigit, toDigit, direction);
-  }
-
-  function setAllInstant(text) {
-    if (currentTemplate !== text) {
-      buildOdometer(text);
+    if (!inited || text.length !== lastShown.length) {
       fitPrice();
-      refreshCellHeight();
     }
-
-    const nodes = Array.from(priceEl.children);
-    let i = 0;
-    for (const ch of text) {
-      const node = nodes[i++];
-      if (!node) break;
-      if (node.classList.contains("digit")) {
-        const track = node.querySelector(".track");
-        node.dataset.value = ch;
-        setDigit(track, ch, ch, true);
-      } else {
-        node.textContent = ch;
-      }
+    if (pulse) {
+      priceEl.classList.remove("is-refreshing");
+      void priceEl.offsetWidth;
+      priceEl.classList.add("is-refreshing");
+      clearTimeout(pulseTimer);
+      pulseTimer = setTimeout(() => {
+        priceEl.classList.remove("is-refreshing");
+      }, 750);
     }
-
-    currentTemplate = text;
-    lastShown = text;
-  }
-
-  function animateTo(text) {
-    if (!inited || text.length !== currentTemplate.length) {
-      rebuildAndFit(text, false);
-      setAllInstant(text);
-      return;
-    }
-
-    const direction = Number(text.replace(/,/g, "")) >= Number(lastShown.replace(/,/g, "")) ? 1 : -1;
-    const nodes = Array.from(priceEl.children);
-    let i = 0;
-    for (const ch of text) {
-      const node = nodes[i++];
-      if (!node) break;
-      if (node.classList.contains("digit")) {
-        if (node.dataset.value !== ch) {
-          const prev = node.dataset.value;
-          node.dataset.value = ch;
-          const track = node.querySelector(".track");
-          setDigit(track, prev, ch, false, direction);
-        }
-      } else {
-        node.textContent = ch;
-      }
-    }
-
-    currentTemplate = text;
+    inited = true;
     lastShown = text;
   }
 
@@ -377,13 +211,9 @@
       const next = await fetchPrice();
       writeCache(next);
       if (!lastShown) {
-        rebuildAndFit(next, false);
-        setAllInstant(next);
-      } else if (next.length !== currentTemplate.length) {
-        rebuildAndFit(next, false);
-        setAllInstant(next);
+        renderPrice(next, false);
       } else if (next !== lastShown) {
-        animateTo(next);
+        renderPrice(next, true);
       }
     } catch {
       // keep current display or cache
@@ -395,8 +225,7 @@
   function boot() {
     const cached = readCache();
     if (cached?.price) {
-      rebuildAndFit(cached.price, false);
-      setAllInstant(cached.price);
+      renderPrice(cached.price, false);
     }
     refreshPrice();
     setInterval(refreshPrice, MIN_UPDATE_INTERVAL_MS);
@@ -412,8 +241,7 @@
     if (inited && lastShown) {
       setTimeout(() => {
         fitPrice();
-        refreshCellHeight();
-        setAllInstant(lastShown);
+        renderPrice(lastShown, false);
       }, 80);
     }
   }, { passive: true });
@@ -422,8 +250,7 @@
     if (inited && lastShown) {
       setTimeout(() => {
         fitPrice();
-        refreshCellHeight();
-        setAllInstant(lastShown);
+        renderPrice(lastShown, false);
       }, 80);
     }
   }, { passive: true });
