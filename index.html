@@ -123,8 +123,8 @@
   const CACHE_TS_KEY = "btc_price_cache_ts_v1";
   const STALE_MS = 60 * 60 * 1000;
   const MIN_UPDATE_INTERVAL_MS = 1000;
-  const ANIM_MS = 180;
-  const ANIM_EASE = "cubic-bezier(0.2, 0.9, 0.2, 1)";
+  const ANIM_MS = 450;
+  const ANIM_EASE = "linear(0,.005,.019,.039,.066,.096,.129,.165,.202,.24,.278,.316,.354,.39,.426,.461,.494,.526,.557,.586,.614,.64,.665,.689,.711,.731,.751,.769,.786,.802,.817,.831,.844,.856,.867,.877,.887,.896,.904,.912,.919,.925,.931,.937,.942,.947,.951,.955,.959,.962,.965,.968,.971,.973,.976,.978,.98,.981,.983,.984,.986,.987,.988,.989,.99,.991,.992,.992,.993,.994,.994,.995,.995,.996,.996,.9963,.9967,.9969,.9972,.9975,.9977,.9979,.9981,.9982,.9984,.9985,.9987,.9988,.9989,1)";
 
   const priceEl = document.getElementById("price");
   const stageEl = document.querySelector(".stage");
@@ -226,16 +226,35 @@
     inited = true;
   }
 
-  function positionDigit(track, digit, instant) {
+  function digitTranslatePx(value, digit, cellH) {
+    return digitOffset(value, Number(digit)) * cellH;
+  }
+
+  function positionDigit(track, digit, instant, prevDigit = digit) {
     const cellH = refreshCellHeight();
     if (!cellH) return;
 
-    const current = Number(digit);
+    track.getAnimations().forEach((anim) => anim.cancel());
     track.querySelectorAll(".digit__num").forEach((node) => {
       const value = Number(node.dataset.num);
-      const offset = digitOffset(value, current);
-      node.style.transition = instant ? "none" : `transform ${ANIM_MS}ms ${ANIM_EASE}`;
-      node.style.transform = `translate3d(0, ${offset * cellH}px, 0)`;
+      const fromY = digitTranslatePx(value, prevDigit, cellH);
+      const toY = digitTranslatePx(value, digit, cellH);
+
+      if (instant) {
+        node.getAnimations().forEach((anim) => anim.cancel());
+        node.style.transform = `translate3d(0, ${toY}px, 0)`;
+        return;
+      }
+
+      node.getAnimations().forEach((anim) => anim.cancel());
+      node.style.transform = `translate3d(0, ${toY}px, 0)`;
+      node.animate(
+        [
+          { transform: `translate3d(0, ${fromY}px, 0)` },
+          { transform: `translate3d(0, ${toY}px, 0)` }
+        ],
+        { duration: ANIM_MS, easing: ANIM_EASE, fill: "both" }
+      );
     });
   }
 
@@ -278,9 +297,10 @@
       if (!node) break;
       if (node.classList.contains("digit")) {
         if (node.dataset.value !== ch) {
+          const prev = node.dataset.value;
           node.dataset.value = ch;
           const track = node.querySelector(".track");
-          positionDigit(track, ch, false);
+          positionDigit(track, ch, false, prev);
         }
       } else {
         node.textContent = ch;
