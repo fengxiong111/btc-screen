@@ -12,8 +12,6 @@
   :root {
     --bg: #000;
     --ink: rgba(255,255,255,.92);
-    --dur: 220ms;
-    --ease: cubic-bezier(0.16,1,0.3,1);
   }
 
   * { box-sizing: border-box; }
@@ -91,7 +89,7 @@
     left: 0;
     top: 0;
     width: 100%;
-    will-change: transform, opacity;
+    will-change: transform;
     transform: translate3d(0, var(--y, 0em), 0);
   }
 
@@ -128,7 +126,9 @@
   const CACHE_TS_KEY = "btc_price_cache_ts_v1";
   const STALE_MS = 60 * 60 * 1000;
   const MIN_UPDATE_INTERVAL_MS = 1000;
-  const DIGIT_SHIFT_EM = 0.16;
+  const ANIM_MS = 200;
+  const ANIM_EASE = "cubic-bezier(0.22, 1, 0.36, 1)";
+  const DIGIT_SHIFT_EM = 0.62;
 
   const priceEl = document.getElementById("price");
   const stageEl = document.querySelector(".stage");
@@ -217,28 +217,26 @@
     inited = true;
   }
 
-  function animateDigit(track, fromDigit, toDigit) {
-    const delta = Number(toDigit) - Number(fromDigit);
-    const direction = delta >= 0 ? 1 : -1;
-    const shift = `${direction * DIGIT_SHIFT_EM}em`;
-
+  function animateDigit(track, toDigit, direction) {
+    const target = -Number(toDigit);
+    const start = target + (direction > 0 ? DIGIT_SHIFT_EM : -DIGIT_SHIFT_EM);
     track.getAnimations().forEach((anim) => anim.cancel());
     track.animate(
       [
-        { opacity: 0.64, transform: `translate3d(0, calc(${shift} + ${-Number(toDigit)}em), 0)` },
-        { opacity: 1, transform: `translate3d(0, ${-Number(toDigit)}em, 0)` }
+        { transform: `translate3d(0, ${start}em, 0)` },
+        { transform: `translate3d(0, ${target}em, 0)` }
       ],
-      { duration: 220, easing: "cubic-bezier(0.16,1,0.3,1)", fill: "none" }
+      { duration: ANIM_MS, easing: ANIM_EASE, fill: "none" }
     );
   }
 
-  function setDigit(track, fromDigit, toDigit, instant) {
+  function setDigit(track, toDigit, instant, direction = 1) {
     track.style.setProperty("--y", `${-Number(toDigit)}em`);
     if (instant) {
       track.getAnimations().forEach((anim) => anim.cancel());
       return;
     }
-    animateDigit(track, fromDigit, toDigit);
+    animateDigit(track, toDigit, direction);
   }
 
   function setAllInstant(text) {
@@ -254,7 +252,7 @@
       if (node.classList.contains("digit")) {
         const track = node.querySelector(".track");
         node.dataset.value = ch;
-        setDigit(track, ch, ch, true);
+        setDigit(track, ch, true);
       } else {
         node.textContent = ch;
       }
@@ -271,6 +269,7 @@
       return;
     }
 
+    const direction = Number(text.replace(/,/g, "")) >= Number(lastShown.replace(/,/g, "")) ? 1 : -1;
     const nodes = Array.from(priceEl.children);
     let i = 0;
     for (const ch of text) {
@@ -278,10 +277,9 @@
       if (!node) break;
       if (node.classList.contains("digit")) {
         if (node.dataset.value !== ch) {
-          const prev = node.dataset.value;
           node.dataset.value = ch;
           const track = node.querySelector(".track");
-          setDigit(track, prev, ch, false);
+          setDigit(track, ch, false, direction);
         }
       } else {
         node.textContent = ch;
