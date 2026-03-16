@@ -12,8 +12,8 @@
   :root {
     --bg: #000;
     --ink: rgba(255,255,255,.92);
-    --dur: 520ms;
-    --ease: cubic-bezier(0.08,0.92,0.18,1);
+    --dur: 220ms;
+    --ease: cubic-bezier(0.16,1,0.3,1);
   }
 
   * { box-sizing: border-box; }
@@ -90,9 +90,9 @@
     position: absolute;
     left: 0;
     top: 0;
-    will-change: transform;
+    width: 100%;
+    will-change: transform, opacity;
     transform: translate3d(0, var(--y, 0em), 0);
-    transition: transform var(--dur) var(--ease);
   }
 
   .cell {
@@ -127,7 +127,8 @@
   const CACHE_KEY = "btc_price_cache_v1";
   const CACHE_TS_KEY = "btc_price_cache_ts_v1";
   const STALE_MS = 60 * 60 * 1000;
-  const MIN_UPDATE_INTERVAL_MS = 5000;
+  const MIN_UPDATE_INTERVAL_MS = 1000;
+  const DIGIT_SHIFT_EM = 0.16;
 
   const priceEl = document.getElementById("price");
   const stageEl = document.querySelector(".stage");
@@ -156,12 +157,7 @@
   let lastShown = "";
   let fetchInFlight = false;
 
-  function freezeOdometer(freeze = true) {
-    priceEl.querySelectorAll(".track").forEach((track) => {
-      track.style.transitionDuration = freeze ? "0ms" : "";
-      track.style.transitionDelay = freeze ? "0ms" : "";
-    });
-  }
+  function freezeOdometer() {}
 
   function buildOdometer(text) {
     priceEl.innerHTML = "";
@@ -221,15 +217,28 @@
     inited = true;
   }
 
-  function setDigit(track, digit, instant) {
+  function animateDigit(track, fromDigit, toDigit) {
+    const delta = Number(toDigit) - Number(fromDigit);
+    const direction = delta >= 0 ? 1 : -1;
+    const shift = `${direction * DIGIT_SHIFT_EM}em`;
+
+    track.getAnimations().forEach((anim) => anim.cancel());
+    track.animate(
+      [
+        { opacity: 0.64, transform: `translate3d(0, calc(${shift} + ${-Number(toDigit)}em), 0)` },
+        { opacity: 1, transform: `translate3d(0, ${-Number(toDigit)}em, 0)` }
+      ],
+      { duration: 220, easing: "cubic-bezier(0.16,1,0.3,1)", fill: "none" }
+    );
+  }
+
+  function setDigit(track, fromDigit, toDigit, instant) {
+    track.style.setProperty("--y", `${-Number(toDigit)}em`);
     if (instant) {
-      track.style.transition = "none";
-      track.style.setProperty("--y", `${-Number(digit)}em`);
-      track.getBoundingClientRect();
-      track.style.transition = "";
+      track.getAnimations().forEach((anim) => anim.cancel());
       return;
     }
-    track.style.setProperty("--y", `${-Number(digit)}em`);
+    animateDigit(track, fromDigit, toDigit);
   }
 
   function setAllInstant(text) {
@@ -245,7 +254,7 @@
       if (node.classList.contains("digit")) {
         const track = node.querySelector(".track");
         node.dataset.value = ch;
-        setDigit(track, ch, true);
+        setDigit(track, ch, ch, true);
       } else {
         node.textContent = ch;
       }
@@ -269,9 +278,10 @@
       if (!node) break;
       if (node.classList.contains("digit")) {
         if (node.dataset.value !== ch) {
+          const prev = node.dataset.value;
           node.dataset.value = ch;
           const track = node.querySelector(".track");
-          setDigit(track, ch, false);
+          setDigit(track, prev, ch, false);
         }
       } else {
         node.textContent = ch;
